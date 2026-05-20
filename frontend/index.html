@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en" class="bg-[#0F0F0F] text-white selection:bg-[#FF0000]/30 selection:text-white">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VideoTube | Premium Video Sharing & Creator Community Platform</title>
+    
+    <!-- SEO and Social Metadata -->
+    <meta name="description" content="Share your stories, connect with your favorite creators, create custom playlists, publish community tweets, and experience video sharing with a modern, glassmorphic layout and blazing fast performance." />
+    
+    <!-- Google Fonts: Outfit (For Headings) and Inter (For UI/Body) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Premium Scrollbar Styles and Custom Font Variables -->
+    <style>
+      :root {
+        font-family: 'Inter', sans-serif;
+      }
+      h1, h2, h3, h4, h5, h6 {
+        font-family: 'Outfit', sans-serif;
+      }
+      
+      /* Webkit Custom Premium Scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #0F0F0F;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #1E1E1E;
+        border-radius: 9999px;
+        border: 2px solid #0F0F0F;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #FF0000/50;
+      }
+      
+      /* Custom selection highlight */
+      ::selection {
+        background: rgba(255, 0, 0, 0.3);
+        color: #ffffff;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
