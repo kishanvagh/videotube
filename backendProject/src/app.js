@@ -4,8 +4,25 @@ import cookieParser from "cookie-parser"
 
 const app = express()
 
+// CORS_ORIGIN may be a single origin or a comma-separated list (e.g. a
+// custom domain plus the Vercel production alias). Any *.vercel.app
+// deployment of this project (production alias or per-push preview URL)
+// is also allowed, since Vercel mints a new preview URL on every push.
+const allowedOrigins = (process.env.CORS_ORIGIN || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+
+const vercelPreviewPattern = /^https:\/\/videotube-[a-z0-9-]+\.vercel\.app$/i
+
 app.use(cors({
-    origin: process.env.CORS_ORIGIN,
+    origin: (origin, callback) => {
+        if (!origin) return callback(null, true) // non-browser requests (curl, server-to-server)
+        if (allowedOrigins.includes(origin) || vercelPreviewPattern.test(origin)) {
+            return callback(null, true)
+        }
+        return callback(null, false)
+    },
     credentials: true
 }))
 
