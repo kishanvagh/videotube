@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate, Link } from "react-router-dom";
+import { useDispatch } from "react-redux";
 import { loginUser } from "../services/authService";
+import { setUser } from "../store/authSlice";
 
 function Login() {
     const navigate = useNavigate();
+    const dispatch = useDispatch();
 
     const [loading, setLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
@@ -35,6 +38,8 @@ function Login() {
             }
 
             const response = await loginUser(payload);
+
+            dispatch(setUser(response?.data?.user));
 
             setSuccessMessage(
                 response?.message || "Login successful!"
