@@ -9,6 +9,11 @@ import {
     updateVideo,
 } from "../controllers/video.controller.js";
 
+import {
+    chatWithVideo,
+    updateVideoTranscript
+} from "../controllers/chat.controller.js";
+
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 
 import { upload } from "../middlewares/multer.middleware.js";
@@ -23,6 +28,10 @@ const router = Router();
 router.route("/")
     .get(getAllVideos);
 
+// RAG Chatbot Q&A on video
+router.route("/:videoId/chat")
+    .post(chatWithVideo);
+
 // Get single video by ID
 router.route("/:videoId")
     .get(getVideoById);
@@ -33,6 +42,10 @@ router.route("/:videoId")
  */
 
 router.use(verifyJWT);
+
+// Update transcript & re-index vector DB
+router.route("/:videoId/transcript")
+    .post(updateVideoTranscript);
 
 // Publish video
 router.route("/")

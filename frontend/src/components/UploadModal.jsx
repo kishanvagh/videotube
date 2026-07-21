@@ -4,6 +4,7 @@ import { publishAVideo } from "../services/videoService";
 function UploadModal({ onClose, onUploadSuccess }) {
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
+    const [transcript, setTranscript] = useState("");
     const [videoFile, setVideoFile] = useState(null);
     const [thumbnail, setThumbnail] = useState(null);
 
@@ -57,6 +58,7 @@ function UploadModal({ onClose, onUploadSuccess }) {
             const formData = new FormData();
             formData.append("title", title);
             formData.append("description", description);
+            formData.append("transcript", transcript);
             formData.append("videoFile", videoFile);
             formData.append("thumbnail", thumbnail);
 
@@ -203,7 +205,24 @@ function UploadModal({ onClose, onUploadSuccess }) {
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
                                 placeholder="Describe what your video is about..."
-                                rows={4}
+                                rows={3}
+                                className="w-full px-5 py-3 rounded-2xl bg-primary-bg/40 border border-border-color text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all duration-300 text-sm"
+                                disabled={loading}
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-semibold text-text-primary mb-2 font-display flex items-center gap-2">
+                                <span>Video Transcript</span>
+                                <span className="text-xs text-accent bg-accent/10 px-2 py-0.5 rounded-full border border-accent/20">
+                                    Qdrant Vector DB
+                                </span>
+                            </label>
+                            <textarea
+                                value={transcript}
+                                onChange={(e) => setTranscript(e.target.value)}
+                                placeholder="Optional: Paste video transcript or subtitles here to enable AI Chatbot Q&A..."
+                                rows={3}
                                 className="w-full px-5 py-3 rounded-2xl bg-primary-bg/40 border border-border-color text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all duration-300 text-sm"
                                 disabled={loading}
                             />

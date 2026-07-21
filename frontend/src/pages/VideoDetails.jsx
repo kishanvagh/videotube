@@ -4,6 +4,7 @@ import { useSelector } from "react-redux";
 
 import Loader from "../components/Loader";
 import CommentsSection from "../components/CommentsSection";
+import VideoChatbot from "../components/VideoChatbot";
 
 import LikeButton from "../components/LikeButton";
 import SubscribeButton from "../components/SubscribeButton";
@@ -21,7 +22,7 @@ import { formatViews, formatUploadTime } from "../utils/videoHelpers";
 
 function VideoDetails() {
   const { videoId } = useParams();
-  const { isAuthenticated } = useSelector((state) => state.auth);
+  const { isAuthenticated, user: currentUser } = useSelector((state) => state.auth);
 
   const [video, setVideo] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -234,8 +235,16 @@ function VideoDetails() {
           <CommentsSection videoId={videoId} />
         </div>
 
-        {/* Sidebar / Recommended */}
-        <div className="lg:col-span-4">
+        {/* Sidebar / Recommended & AI Chatbot */}
+        <div className="lg:col-span-4 space-y-6">
+          {/* RAG AI Chatbot */}
+          <VideoChatbot
+            videoId={videoId}
+            videoTitle={video.title}
+            initialTranscript={video.transcript}
+            isOwner={Boolean(currentUser?._id && video.owner?._id === currentUser._id)}
+          />
+
           <div className="bg-card-bg/30 border border-border-color rounded-3xl p-6 backdrop-blur-md sticky top-24 space-y-6">
             <h2 className="text-text-primary text-lg font-bold font-display border-b border-border-color pb-3">
               Recommended Creations

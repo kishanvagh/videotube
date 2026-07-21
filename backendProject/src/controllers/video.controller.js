@@ -5,6 +5,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import { indexVideoTranscript } from "../utils/qdrant.service.js";
 
 /**
  * @desc    Get all videos with search, sorting, pagination
@@ -119,7 +120,7 @@ const getAllVideos = asyncHandler(async (req, res) => {
  * @access  Private
  */
 const publishAVideo = asyncHandler(async (req, res) => {
-    const { title, description } = req.body;
+    const { title, description, transcript = "" } = req.body;
 
     if (!title?.trim() || !description?.trim()) {
         throw new ApiError(400, "Title and description are required");
@@ -154,12 +155,25 @@ const publishAVideo = asyncHandler(async (req, res) => {
     const video = await Video.create({
         title,
         description,
+        transcript: transcript?.trim() || "",
         videoFile: uploadedVideo.url,
         thumbnail: uploadedThumbnail.url,
         duration: uploadedVideo.duration || 0,
         owner: req.user._id,
         isPublished: true
     });
+
+    // Index title, description, and transcript into Qdrant Vector DB
+    try {
+        await indexVideoTranscript({
+            videoId: video._id,
+            title: video.title,
+            description: video.description,
+            transcript: video.transcript
+        });
+    } catch (vectorErr) {
+        console.warn("Vector indexing error during video publish:", vectorErr.message);
+    }
 
     const createdVideo = await Video.findById(video._id).populate(
         "owner",

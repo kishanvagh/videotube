@@ -19,6 +19,10 @@ const videoSchema = new Schema(
             type: String, 
             required: true
         },
+        transcript: {
+            type: String,
+            default: ""
+        },
         duration: {
             type: Number, 
             required: true

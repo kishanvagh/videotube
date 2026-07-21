@@ -78,15 +78,15 @@ const toggleSubscription = asyncHandler(async (req, res) => {
  * @access  Public
  */
 const getUserChannelSubscribers = asyncHandler(async (req, res) => {
-    const { subscriberId } = req.params;
+    const { channelId } = req.params;
 
     // Validate channelId
-    if (!isValidObjectId(subscriberId)) {
+    if (!isValidObjectId(channelId)) {
         throw new ApiError(400, "Invalid channel ID");
     }
 
     // Check channel exists
-    const channel = await User.findById(subscriberId);
+    const channel = await User.findById(channelId);
 
     if (!channel) {
         throw new ApiError(404, "Channel not found");
@@ -94,7 +94,7 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
 
     // Get subscribers
     const subscribers = await Subscription.find({
-        channel: subscriberId
+        channel: channelId
     }).populate(
         "subscriber",
         "fullName username avatar"
@@ -118,17 +118,15 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
  * @access  Public
  */
 const getSubscribedChannels = asyncHandler(async (req, res) => {
-    const { channelId } = req.params;
-    console.log(channelId);
-    console.log(typeof channelId);
-    console.log(isValidObjectId(channelId));
+    const { subscriberId } = req.params;
+
     // Validate subscriberId
-    if (!isValidObjectId(channelId)) {
+    if (!isValidObjectId(subscriberId)) {
         throw new ApiError(400, "Invalid subscriber ID");
     }
 
     // Check user exists
-    const user = await User.findById(channelId);
+    const user = await User.findById(subscriberId);
 
     if (!user) {
         throw new ApiError(404, "User not found");
@@ -136,7 +134,7 @@ const getSubscribedChannels = asyncHandler(async (req, res) => {
 
     // Get subscribed channels
     const subscribedChannels = await Subscription.find({
-        subscriber: channelId
+        subscriber: subscriberId
     }).populate(
         "channel",
         "fullName username avatar"
