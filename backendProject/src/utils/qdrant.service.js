@@ -3,6 +3,15 @@ import { QdrantClient } from "@qdrant/js-client-rest";
 const COLLECTION_NAME = "video_transcripts";
 const VECTOR_SIZE = 384;
 
+// Gemini models are configurable via env so they can be swapped without a code
+// change when Google rotates/retires versions. Older versions (e.g.
+// gemini-1.5-flash, text-embedding-004) have been shut down and return 404.
+const EMBEDDING_MODEL = process.env.GEMINI_EMBEDDING_MODEL || "gemini-embedding-001";
+// Tried in order until one succeeds — survives model retirement out of the box.
+const GENERATION_MODELS = process.env.GEMINI_MODEL
+    ? [process.env.GEMINI_MODEL]
+    : ["gemini-flash-latest", "gemini-3.6-flash", "gemini-2.5-flash"];
+
 // Initialize Qdrant Client (Default to local Qdrant instance or env QDRANT_URL)
 const qdrantUrl = process.env.QDRANT_URL || "http://localhost:6333";
 const qdrantApiKey = process.env.QDRANT_API_KEY || undefined;
@@ -31,21 +40,28 @@ export const generateEmbedding = async (text) => {
     if (process.env.GEMINI_API_KEY) {
         try {
             const response = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${process.env.GEMINI_API_KEY}`,
+                `https://generativelanguage.googleapis.com/v1beta/models/${EMBEDDING_MODEL}:embedContent?key=${process.env.GEMINI_API_KEY}`,
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        model: "models/text-embedding-004",
-                        content: { parts: [{ text: textToEmbed }] }
+                        content: { parts: [{ text: textToEmbed }] },
+                        // Ask for a vector matching the collection size. gemini-embedding-001
+                        // uses Matryoshka representation, so truncating + renormalizing to
+                        // VECTOR_SIZE is valid even if the API returns more dimensions.
+                        output_dimensionality: VECTOR_SIZE
                     })
                 }
             );
-            const data = await response.json();
-            if (data.embedding?.values) {
-                // Return normalized vector or trimmed/padded to 384
-                const vec = data.embedding.values;
-                return normalizeVector(vec.slice(0, VECTOR_SIZE));
+            if (!response.ok) {
+                const errBody = await response.text();
+                console.warn(`Gemini embedding failed (${response.status}) model '${EMBEDDING_MODEL}': ${errBody.slice(0, 250)}`);
+            } else {
+                const data = await response.json();
+                const values = data.embedding?.values;
+                if (values && values.length) {
+                    return normalizeVector(values.slice(0, VECTOR_SIZE));
+                }
             }
         } catch (e) {
             console.warn("Gemini embedding error, using local feature vector:", e.message);
@@ -284,8 +300,7 @@ export const generateRAGAnswer = async (videoId, title, description, query, cont
     
     // Check if Gemini API Key is available
     if (process.env.GEMINI_API_KEY) {
-        try {
-            const prompt = `You are an AI Video Assistant answering questions about a video.
+        const prompt = `You are an AI Video Assistant answering questions about a video.
 Video Title: ${title}
 Video Description: ${description}
 
@@ -294,33 +309,46 @@ ${contextText || "No transcript chunks available."}
 
 User Question: ${query}
 
-Provide a helpful, precise, and polite response based strictly on the video content and context provided above.`;
+Answer the user's question directly and specifically using the video content and context above. If the context doesn't contain the answer, say so honestly instead of repeating the transcript.`;
 
-            const response = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: prompt }] }]
-                    })
+        // Try each candidate model until one succeeds, so a retired model name
+        // doesn't silently break generation (the old bug: gemini-1.5-flash → 404).
+        for (const model of GENERATION_MODELS) {
+            try {
+                const response = await fetch(
+                    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
+                    {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: prompt }] }]
+                        })
+                    }
+                );
+
+                if (!response.ok) {
+                    const errBody = await response.text();
+                    console.warn(`Gemini generateContent failed (${response.status}) model '${model}': ${errBody.slice(0, 300)}`);
+                    continue; // try the next candidate model
                 }
-            );
-            const data = await response.json();
-            const answer = data.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (answer) {
-                return answer;
+
+                const data = await response.json();
+                const answer = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (answer) {
+                    return answer;
+                }
+                console.warn(`Gemini returned no answer text for model '${model}':`, JSON.stringify(data).slice(0, 250));
+            } catch (err) {
+                console.warn(`Gemini RAG answer generation error (model '${model}'):`, err.message);
             }
-        } catch (err) {
-            console.warn("Gemini RAG answer generation error:", err.message);
         }
     }
 
-    // Contextual Synthesis Fallback
+    // Contextual Synthesis Fallback (only reached if Gemini is unavailable/misconfigured)
     if (!contextChunks || contextChunks.length === 0) {
         return `I don't have transcript details for "${title}" yet. You can upload or update the video transcript to ask questions!`;
     }
 
     const topChunk = contextChunks[0].text;
-    return `Based on the video content for "${title}":\n\n"${topChunk}"\n\n(Relevant segment retrieved from vector DB search).`;
+    return `Based on the video content for "${title}":\n\n"${topChunk}"\n\n(Note: live AI generation is currently unavailable, so this is the most relevant transcript segment rather than a generated answer. Check the server logs and the GEMINI_API_KEY / GEMINI_MODEL configuration.)`;
 };
