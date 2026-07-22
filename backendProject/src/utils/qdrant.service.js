@@ -87,11 +87,20 @@ function cosineSimilarity(vecA, vecB) {
     return dot;
 }
 
+// Cache initialization so we don't re-check the collection / payload index
+// on every single index+search call once it's confirmed ready.
+let collectionInitialized = false;
+
 /**
- * Ensure Qdrant collection exists
+ * Ensure Qdrant collection exists AND that the `videoId` payload field is
+ * indexed. Qdrant Cloud runs in "strict mode", which rejects any search that
+ * filters on an un-indexed payload field with a 400 "Bad Request" — that is
+ * what made every search fall back to the in-memory store even though
+ * indexing (upsert, which does no filtering) succeeded.
  */
 export const ensureQdrantCollection = async () => {
     if (!client) return false;
+    if (collectionInitialized) return true;
     try {
         const collections = await client.getCollections();
         const exists = collections.collections?.some(
@@ -106,6 +115,21 @@ export const ensureQdrantCollection = async () => {
             });
             console.log(`Created Qdrant collection '${COLLECTION_NAME}'`);
         }
+
+        // Create a keyword index on `videoId` so filtered searches are allowed.
+        // Idempotent: creating an index that already exists is a no-op, and any
+        // error here shouldn't block the collection from being usable.
+        try {
+            await client.createPayloadIndex(COLLECTION_NAME, {
+                field_name: "videoId",
+                field_schema: "keyword",
+                wait: true
+            });
+        } catch (indexError) {
+            console.warn("Could not ensure 'videoId' payload index (may already exist):", indexError.message);
+        }
+
+        collectionInitialized = true;
         return true;
     } catch (error) {
         console.warn("Qdrant server not accessible, using memory fallback vector store:", error.message);
